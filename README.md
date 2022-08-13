@@ -10,6 +10,19 @@ This example consists of the following components:
 
 Please, be sure you followed the steps in [Basic AWS EKS](https://github.com/alpersonalwebsite/basic-aws-eks) and you have your cluster up and running.
 
+### TL;DR
+
+**Create cluster and nodegorup**
+```shell
+eksctl create cluster -f basic-aws-eks/eks/cluster-autoscaling.yaml 
+```
+
+This is going to create both stacks:
+* eksctl-basic-eks-cluster-cluster
+* eksctl-basic-eks-cluster-nodegroup-ng-2
+
+Then, follow the instructions under **Create deployment for AutoScaler**
+
 ## Redis
 
 ### Create Redis Deployment 
@@ -370,16 +383,77 @@ kubectl delete deployment frontend
 kubectl delete service frontend
 ```
 
-### Delete Redis Deployment
+### Backend
+
+#### Delete Redis Deployment
 It will delete both, the leader and the follower
 
 ```shell
 kubectl delete deployment -l app=redis
 ```
 
-### Delete Redis Service
+#### Delete Redis Service
 It will delete both, the leader and the follower
 
 ```shell
 kubectl delete service -l app=redis
+```
+
+**The following part is the DELETE section of `basic-aws-eks`**
+
+### Delete nodegroup
+
+This would be the same to `delete in CFN` the stack `eksctl-basic-eks-cluster-nodegroup-ng-2`
+
+```shell
+eksctl delete nodegroup --config-file=eks/cluster-autoscaling.yaml --approve 
+```
+
+Output:
+
+```
+...
+...
+...
+2022-08-09 09:57:33 [✔]  deleted 1 nodegroup(s) from cluster "basic-eks-cluster"
+```
+
+### Delete cluster
+
+This would be the same to `delete in CFN` the stack `eksctl-basic-eks-cluster-cluster`
+
+Before doing this, be sure that there are no resources tied to the VPC: example, Security Groups.
+
+```shell
+eksctl delete cluster -f eks/cluster-autoscaling.yaml
+```
+
+Output:
+
+```shell
+2022-08-09 10:02:07 [ℹ]  deleting EKS cluster "basic-eks-cluster"
+2022-08-09 10:02:07 [ℹ]  deleted 0 Fargate profile(s)
+2022-08-09 10:02:08 [✔]  kubeconfig has been updated
+2022-08-09 10:02:08 [ℹ]  cleaning up AWS load balancers created by Kubernetes objects of Kind Service or Ingress
+2022-08-09 10:02:09 [ℹ]  1 task: { delete cluster control plane "basic-eks-cluster" [async] }
+2022-08-09 10:02:09 [ℹ]  will delete stack "eksctl-basic-eks-cluster-cluster"
+2022-08-09 10:02:09 [✔]  all cluster resources were deleted
+```
+
+### Delete CFN tacks
+
+```shell
+aws cloudformation delete-stack --stack-name 	service-support
+```
+
+### Delete user password from parameter store
+
+```shell
+aws ssm delete-parameter --name EKSUserPassword --region us-west-1
+```
+
+### Delete the EC2 Key Pair
+
+```shell
+aws ec2 delete-key-pair --key-name EKSProjectEC2KeyPair --region us-west-1
 ```
